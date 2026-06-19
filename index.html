@@ -1,856 +1,224 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  LayoutDashboard, ShoppingCart, Users, Truck, Package, 
-  CreditCard, FileText, BarChart3, UserCog, Briefcase, 
-  Settings, Bell, Search, Plus, Minus, Trash2, Check, 
-  X, Clock, AlertTriangle, TrendingUp, TrendingDown, 
-  DollarSign, Activity, LogIn, LogOut, Phone, Smartphone,
-  Banknote, Building, Menu, ChevronDown, Filter, Download,
-  Eye, Edit, Shield, UserCheck, Calendar, MapPin, ArrowUpRight, 
-  ArrowDownRight, Warehouse, RefreshCw, AlertCircle, CheckCircle2, 
-  Loader2, Printer, Save, Upload, FileJson
-} from 'lucide-react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line,
-  AreaChart, Area, Legend
-} from 'recharts';
-import { motion, AnimatePresence } from 'framer-motion';
+/* ============ KenyaPOS - Main Application Script ============ */
 
-const formatKES = (amount) => new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', minimumFractionDigits: 0 }).format(amount);
-const generateId = () => Math.random().toString(36).substring(2, 9).toUpperCase();
+document.addEventListener('DOMContentLoaded', function () {
+    initLogin();
+    initSidebar();
+    initNavigation();
+    initUserDropdown();
+    initLogout();
+    updateCurrentDate();
+});
 
-const initialProducts = [
-  { id: '1', name: 'Jogoo Maize Flour 2kg', category: 'Food', price: 250, stock: 45, unit: 'pcs', expiry: '2026-12-01', supplier: 'Unga Ltd', sku: 'JMF-2KG', barcode: '1111111111111' },
-  { id: '2', name: 'KCC Fresh Milk 500ml', category: 'Dairy', price: 65, stock: 12, unit: 'pcs', expiry: '2026-06-20', supplier: 'KCC', sku: 'KCC-500', barcode: '2222222222222' },
-  { id: '3', name: 'Ketepa Tea Bags 100s', category: 'Beverages', price: 450, stock: 30, unit: 'pcs', expiry: '2027-01-15', supplier: 'Ketepa', sku: 'KTB-100', barcode: '3333333333333' },
-  { id: '4', name: 'Safaricom Airtime 100', category: 'Services', price: 100, stock: 999, unit: 'pcs', expiry: null, supplier: 'Safaricom', sku: 'SAF-100', barcode: '4444444444444' },
-  { id: '5', name: 'Blue Band Margarine 500g', category: 'Food', price: 320, stock: 8, unit: 'pcs', expiry: '2026-09-10', supplier: 'Unilever', sku: 'BBM-500', barcode: '5555555555555' },
-  { id: '6', name: 'Colgate Toothpaste 150g', category: 'Personal Care', price: 280, stock: 25, unit: 'pcs', expiry: '2027-05-01', supplier: 'Colgate', sku: 'CTP-150', barcode: '6666666666666' },
-  { id: '7', name: 'Kerosene 1 Litre', category: 'Household', price: 180, stock: 50, unit: 'litres', expiry: null, supplier: 'National Oil', sku: 'KER-1L', barcode: '7777777777777' },
-  { id: '8', name: 'Sugar 1kg', category: 'Food', price: 190, stock: 5, unit: 'pcs', expiry: '2028-01-01', supplier: 'Mumias Sugar', sku: 'SUG-1KG', barcode: '8888888888888' },
-];
+/* ============ LOGIN ============ */
+function initLogin() {
+    const loginForm = document.getElementById('loginForm');
+    const loginScreen = document.getElementById('loginScreen');
+    const appContainer = document.getElementById('appContainer');
 
-const initialCustomers = [
-  { id: '1', name: 'Walk-in Customer', phone: '0700000000', email: 'walkin@local.co.ke', balance: 0, type: 'Retail' },
-  { id: '2', name: 'Jane Doe', phone: '0712345678', email: 'jane@example.com', balance: 0, type: 'Wholesale' },
-  { id: '3', name: 'John Smith', phone: '0798765432', email: 'john@example.com', balance: 1500, type: 'Retail' },
-];
+    if (loginForm) {
+        loginForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            handleLogin();
+        });
 
-const initialSuppliers = [
-  { id: '1', name: 'Unga Ltd', phone: '0201234567', email: 'sales@unga.co.ke', balance: 0 },
-  { id: '2', name: 'KCC', phone: '0207654321', email: 'orders@kcc.co.ke', balance: 12000 },
-  { id: '3', name: 'Safaricom', phone: '0722000000', email: 'enterprise@safaricom.co.ke', balance: 0 },
-];
-
-const initialAccounts = [
-  { id: '1', code: '1000', name: 'Cash on Hand', type: 'Asset', balance: 45000 },
-  { id: '2', code: '1100', name: 'M-Pesa Till', type: 'Asset', balance: 23500 },
-  { id: '3', code: '2000', name: 'Supplier Payables', type: 'Liability', balance: 12000 },
-  { id: '4', code: '4000', name: 'Sales Revenue', type: 'Revenue', balance: 156000 },
-  { id: '5', code: '5000', name: 'Cost of Goods Sold', type: 'Expense', balance: 89000 },
-  { id: '6', code: '6000', name: 'Operating Expenses', type: 'Expense', balance: 12000 },
-];
-
-export default function App() {
-  const [currentView, setCurrentView] = useState('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [products, setProducts] = useState(initialProducts);
-  const [customers, setCustomers] = useState(initialCustomers);
-  const [suppliers, setSuppliers] = useState(initialSuppliers);
-  const [accounts, setAccounts] = useState(initialAccounts);
-  const [cart, setCart] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showCheckout, setShowCheckout] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [mpesaPhone, setMpesaPhone] = useState('');
-  const [mpesaStatus, setMpesaStatus] = useState('idle');
-  const [customerName, setCustomerName] = useState('Walk-in Customer');
-  const [receiptData, setReceiptData] = useState(null);
-  const [settings, setSettings] = useState({ storeName: 'SwiftTill Kenya', kraPin: 'P051234567Z', tillNumber: '543210', address: 'Nairobi, Kenya' });
-  
-  // Inventory & Operations State
-  const [inventoryLogs, setInventoryLogs] = useState([]);
-  const [expenses, setExpenses] = useState([]);
-  const [purchases, setPurchases] = useState([]);
-  const [employees, setEmployees] = useState([
-    { id: '1', name: 'John Cashier', role: 'Cashier', status: 'Clocked In', lastAction: '08:00 AM', hoursToday: 4.5 },
-    { id: '2', name: 'Sarah Teller', role: 'Cashier', status: 'On Break', lastAction: '12:30 PM', hoursToday: 4.0 },
-  ]);
-  const [users, setUsers] = useState([
-    { id: '1', name: 'Admin User', role: 'Admin', username: 'admin', status: 'Active' },
-    { id: '2', name: 'Jane Manager', role: 'Manager', username: 'jane', status: 'Active' },
-  ]);
-
-  const barcodeRef = useRef(null);
-
-  const addToCart = (product) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
-      return [...prev, { ...product, qty: 1 }];
-    });
-  };
-
-  const updateCartQty = (id, delta) => {
-    setCart(prev => prev.map(item => item.id === id ? { ...item, qty: Math.max(0, item.qty + delta) } : item).filter(item => item.qty > 0));
-  };
-
-  const handleBarcodeScan = (e) => {
-    if (e.key === 'Enter') {
-      const product = products.find(p => p.sku === e.target.value || p.barcode === e.target.value);
-      if (product) {
-        addToCart(product);
-        e.target.value = '';
-        if (barcodeRef.current) barcodeRef.current.focus();
-      } else {
-        alert('Product not found! Please check the barcode or SKU.');
-        e.target.value = '';
-      }
-    }
-  };
-
-  const processPayment = () => {
-    if (paymentMethod === 'mpesa') {
-      if (!mpesaPhone) return;
-      setMpesaStatus('pushing');
-      setTimeout(() => {
-        setMpesaStatus('waiting');
-        setTimeout(() => {
-          setMpesaStatus('success');
-          setTimeout(() => completeSale(), 1500);
-        }, 3000);
-      }, 1500);
-    } else {
-      completeSale();
-    }
-  };
-
-  const completeSale = () => {
-    const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    const tax = total * 0.16;
-    const grandTotal = total + tax;
-
-    setProducts(prev => prev.map(p => {
-      const cartItem = cart.find(c => c.id === p.id);
-      return cartItem ? { ...p, stock: p.stock - cartItem.qty } : p;
-    }));
-
-    const newReceipt = {
-      id: `RCT-${generateId()}`,
-      date: new Date().toLocaleString(),
-      customer: customerName,
-      items: [...cart],
-      subtotal: total,
-      tax: tax,
-      total: grandTotal,
-      paymentMethod: paymentMethod,
-      till: settings.tillNumber
-    };
-    setReceiptData(newReceipt);
-    setCart([]);
-    setShowCheckout(false);
-    setMpesaPhone('');
-    setMpesaStatus('idle');
-    setPaymentMethod('cash');
-    setTimeout(() => window.print(), 500);
-  };
-
-  const handleInventoryAction = (type, productId, qty, reason, branchFrom, branchTo) => {
-    const product = products.find(p => p.id === productId);
-    if (!product) return;
-
-    let newStock = product.stock;
-    if (type === 'adjustment' || type === 'damaged') {
-      newStock += qty; // qty is negative for removal/damage
-    } else if (type === 'transfer') {
-      // In a real app, this would deduct from branchFrom and add to branchTo
-      // For this single-store simulation, we just log it
-    }
-
-    setProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: Math.max(0, newStock) } : p));
-    setInventoryLogs(prev => [{
-      id: generateId(),
-      type,
-      productId,
-      productName: product.name,
-      qty: Math.abs(qty),
-      reason,
-      branchFrom,
-      branchTo,
-      date: new Date().toLocaleString()
-    }, ...prev]);
-  };
-
-  const handleBackup = () => {
-    const data = { products, customers, suppliers, accounts, inventoryLogs, expenses, purchases, settings };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `swifttill_backup_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-  };
-
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'sales', label: 'Sales (POS)', icon: ShoppingCart },
-    { id: 'customers', label: 'Customers', icon: Users },
-    { id: 'suppliers', label: 'Suppliers', icon: Truck },
-    { id: 'products', label: 'Products', icon: Package },
-    { id: 'purchases', label: 'Purchases', icon: FileText },
-    { id: 'inventory', label: 'Inventory', icon: Warehouse },
-    { id: 'expenses', label: 'Expenses', icon: DollarSign },
-    { id: 'accounts', label: 'Accounts', icon: Building },
-    { id: 'mpesa', label: 'M-Pesa', icon: Smartphone },
-    { id: 'reports', label: 'Reports', icon: BarChart3 },
-    { id: 'employees', label: 'Employees', icon: Briefcase },
-    { id: 'users', label: 'Users', icon: UserCog },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
-
-  const Badge = ({ children, color = 'slate' }) => {
-    const colors = { slate: 'bg-slate-100 text-slate-700', emerald: 'bg-emerald-100 text-emerald-700', red: 'bg-red-100 text-red-700', amber: 'bg-amber-100 text-amber-700', blue: 'bg-blue-100 text-blue-700', purple: 'bg-purple-100 text-purple-700' };
-    return <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${colors[color]}`}>{children}</span>;
-  };
-
-  const renderView = () => {
-    switch (currentView) {
-      case 'dashboard':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { title: "Today's Sales", value: formatKES(67450), change: '+12.5%', icon: DollarSign, color: 'bg-emerald-500', trend: 'up' },
-                { title: 'Pending Payments', value: formatKES(12500), change: '-3.2%', icon: Clock, color: 'bg-amber-500', trend: 'down' },
-                { title: 'Low Stock Items', value: '8', change: '+2', icon: AlertTriangle, color: 'bg-red-500', trend: 'down' },
-                { title: 'Total Orders', value: '142', change: '+8.1%', icon: ShoppingCart, color: 'bg-blue-500', trend: 'up' },
-              ].map((stat, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                  <div className="flex justify-between items-start">
-                    <div><p className="text-sm font-medium text-slate-500">{stat.title}</p><h3 className="text-2xl font-bold text-slate-900 mt-2">{stat.value}</h3></div>
-                    <div className={`p-3 rounded-lg ${stat.color}`}><stat.icon className="w-6 h-6 text-white" /></div>
-                  </div>
-                  <div className="mt-4 flex items-center text-sm">
-                    {stat.trend === 'up' ? <ArrowUpRight className="w-4 h-4 text-emerald-500" /> : <ArrowDownRight className="w-4 h-4 text-red-500" />}
-                    <span className={`ml-1 font-medium ${stat.trend === 'up' ? 'text-emerald-500' : 'text-red-500'}`}>{stat.change}</span>
-                    <span className="text-slate-400 ml-2">vs last week</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-semibold text-slate-900 mb-6">Sales Overview</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={[{name:'Mon',sales:45000},{name:'Tue',sales:52000},{name:'Wed',sales:48000},{name:'Thu',sales:61000},{name:'Fri',sales:75000},{name:'Sat',sales:89000},{name:'Sun',sales:67000}]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                    <YAxis stroke="#64748b" fontSize={12} />
-                    <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                    <Area type="monotone" dataKey="sales" stroke="#10b981" fill="#10b981" fillOpacity={0.1} strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-semibold text-slate-900 mb-6">Alerts</h3>
-                <div className="space-y-4">
-                  {[
-                    { type: 'low_stock', message: 'Sugar 1kg is low on stock (5 left)', time: '10 min ago' },
-                    { type: 'expiry', message: 'KCC Fresh Milk expires in 3 days', time: '1 hour ago' },
-                  ].map((n, i) => (
-                    <div key={i} className={`p-4 rounded-lg border ${n.type === 'low_stock' ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
-                      <div className="flex items-start">
-                        {n.type === 'low_stock' ? <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" /> : <Clock className="w-5 h-5 text-amber-500 mt-0.5" />}
-                        <div className="ml-3 flex-1">
-                          <p className="text-sm font-medium text-slate-900">{n.message}</p>
-                          <p className="text-xs text-slate-500 mt-1">{n.time}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'sales':
-        const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()) || p.barcode.includes(searchQuery));
-        const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-        return (
-          <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)]">
-            <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-4 border-b border-slate-200 space-y-3">
-                <input 
-                  ref={barcodeRef}
-                  autoFocus
-                  placeholder="Scan barcode or type SKU..." 
-                  className="w-full p-3 border-2 border-emerald-500 rounded-lg text-lg font-mono focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                  onKeyDown={handleBarcodeScan}
-                />
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input type="text" placeholder="Search products by name..." className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {filteredProducts.map(product => (
-                    <motion.button key={product.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => addToCart(product)} className="bg-white border border-slate-200 rounded-xl p-4 text-left hover:shadow-md hover:border-emerald-300 transition-all group">
-                      <div className="aspect-square bg-slate-100 rounded-lg mb-3 flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
-                        <Package className="w-8 h-8 text-slate-400 group-hover:text-emerald-500" />
-                      </div>
-                      <h4 className="font-medium text-slate-900 text-sm truncate">{product.name}</h4>
-                      <p className="text-xs text-slate-500 mt-1">{product.sku}</p>
-                      <div className="flex justify-between items-center mt-3">
-                        <span className="font-bold text-emerald-600">{formatKES(product.price)}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${product.stock < 10 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>{product.stock} {product.unit}</span>
-                      </div>
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="w-full lg:w-96 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
-              <div className="p-4 border-b border-slate-200">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-semibold text-slate-900">Current Sale</h3>
-                  <button onClick={() => setCart([])} className="text-sm text-red-500 hover:text-red-700 flex items-center"><Trash2 className="w-4 h-4 mr-1" /> Clear</button>
-                </div>
-                <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {cart.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-400"><ShoppingCart className="w-12 h-12 mb-2" /><p className="text-sm">Cart is empty</p></div>
-                ) : cart.map(item => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{item.name}</p>
-                      <p className="text-xs text-slate-500">{formatKES(item.price)} x {item.qty}</p>
-                    </div>
-                    <div className="flex items-center gap-2 ml-3">
-                      <button onClick={() => updateCartQty(item.id, -1)} className="w-7 h-7 rounded-full bg-white border border-slate-300 flex items-center justify-center hover:bg-slate-100"><Minus className="w-3 h-3" /></button>
-                      <span className="w-6 text-center text-sm font-medium">{item.qty}</span>
-                      <button onClick={() => updateCartQty(item.id, 1)} className="w-7 h-7 rounded-full bg-white border border-slate-300 flex items-center justify-center hover:bg-slate-100"><Plus className="w-3 h-3" /></button>
-                      <button onClick={() => setCart(prev => prev.filter(i => i.id !== item.id))} className="ml-2 text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-sm"><span className="text-slate-600">Subtotal</span><span className="font-medium">{formatKES(cartTotal)}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-slate-600">VAT (16%)</span><span className="font-medium">{formatKES(cartTotal * 0.16)}</span></div>
-                  <div className="flex justify-between text-lg font-bold pt-2 border-t border-slate-200"><span className="text-slate-900">Total</span><span className="text-emerald-600">{formatKES(cartTotal * 1.16)}</span></div>
-                </div>
-                <button onClick={() => cart.length > 0 && setShowCheckout(true)} disabled={cart.length === 0} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 mr-2" /> Checkout
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'products':
-        return (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-900">Product Management</h2>
-              <button className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center"><Plus className="w-4 h-4 mr-2" /> Add Product</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    {['Product', 'SKU', 'Barcode', 'Category', 'Price', 'Stock', 'Status'].map(h => <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {products.map(product => (
-                    <tr key={product.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4"><div className="flex items-center"><div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center mr-3"><Package className="w-5 h-5 text-slate-500" /></div><div><p className="font-medium text-slate-900">{product.name}</p><p className="text-xs text-slate-500">{product.supplier}</p></div></div></td>
-                      <td className="px-6 py-4 text-sm font-mono text-slate-600">{product.sku}</td>
-                      <td className="px-6 py-4 text-sm font-mono text-slate-600">{product.barcode}</td>
-                      <td className="px-6 py-4"><Badge>{product.category}</Badge></td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{formatKES(product.price)}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{product.stock} {product.unit}</td>
-                      <td className="px-6 py-4">{product.stock < 10 ? <Badge color="red">Low Stock</Badge> : <Badge color="emerald">In Stock</Badge>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-
-      case 'inventory':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {['adjustment', 'transfer', 'damaged'].map(type => (
-                <div key={type} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                  <h3 className="font-semibold text-slate-900 capitalize mb-4">{type} Stock</h3>
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const fd = new FormData(e.target);
-                    handleInventoryAction(type, fd.get('productId'), type === 'damaged' || type === 'adjustment' ? -parseInt(fd.get('qty')) : parseInt(fd.get('qty')), fd.get('reason'), fd.get('branchFrom'), fd.get('branchTo'));
-                    e.target.reset();
-                  }} className="space-y-3">
-                    <select name="productId" className="w-full p-2 border border-slate-300 rounded-lg text-sm" required>
-                      <option value="">Select Product</option>
-                      {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                    <input name="qty" type="number" placeholder="Quantity" className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                    <input name="reason" placeholder="Reason / Notes" className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                    {type === 'transfer' && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <input name="branchFrom" placeholder="From Branch" className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                        <input name="branchTo" placeholder="To Branch" className="w-full p-2 border border-slate-300 rounded-lg text-sm" required />
-                      </div>
-                    )}
-                    <button type="submit" className="w-full py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700">Record {type}</button>
-                  </form>
-                </div>
-              ))}
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-6 border-b border-slate-200"><h3 className="text-lg font-semibold text-slate-900">Inventory Logs</h3></div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>{['Date', 'Type', 'Product', 'Qty', 'Reason', 'Branches'].map(h => <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {inventoryLogs.length === 0 ? <tr><td colSpan="6" className="px-6 py-8 text-center text-slate-500">No logs recorded yet.</td></tr> : 
-                      inventoryLogs.map(log => (
-                        <tr key={log.id} className="hover:bg-slate-50">
-                          <td className="px-6 py-4 text-sm text-slate-600">{log.date}</td>
-                          <td className="px-6 py-4"><Badge color={log.type === 'damaged' ? 'red' : log.type === 'transfer' ? 'blue' : 'amber'}>{log.type}</Badge></td>
-                          <td className="px-6 py-4 text-sm font-medium text-slate-900">{log.productName}</td>
-                          <td className="px-6 py-4 text-sm text-slate-900">{log.qty}</td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{log.reason}</td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{log.branchFrom ? `${log.branchFrom} → ${log.branchTo}` : 'N/A'}</td>
-                        </tr>
-                      ))
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'customers':
-      case 'suppliers':
-        const isCustomer = currentView === 'customers';
-        const dataList = isCustomer ? customers : suppliers;
-        const setDataList = isCustomer ? setCustomers : setSuppliers;
-        return (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-900 capitalize">{currentView}</h2>
-              <button onClick={() => {
-                const name = prompt(`${isCustomer ? 'Customer' : 'Supplier'} Name:`);
-                if (name) setDataList(prev => [...prev, { id: generateId(), name, phone: '', email: '', balance: 0, type: 'Retail' }]);
-              }} className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center"><Plus className="w-4 h-4 mr-2" /> Add</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>{['Name', 'Phone', 'Email', 'Balance', 'Type'].map(h => <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {dataList.map(item => (
-                    <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{item.name}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{item.phone || '-'}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{item.email || '-'}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{formatKES(item.balance)}</td>
-                      <td className="px-6 py-4">{item.type ? <Badge>{item.type}</Badge> : '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-
-      case 'expenses':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="font-semibold text-slate-900 mb-4">Record Expense</h3>
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const fd = new FormData(e.target);
-                setExpenses(prev => [{ id: generateId(), category: fd.get('category'), amount: parseFloat(fd.get('amount')), date: new Date().toLocaleDateString(), description: fd.get('description') }, ...prev]);
-                e.target.reset();
-              }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <input name="category" placeholder="Category (e.g., Rent, Utilities)" className="p-2 border border-slate-300 rounded-lg text-sm" required />
-                <input name="amount" type="number" placeholder="Amount (KES)" className="p-2 border border-slate-300 rounded-lg text-sm" required />
-                <input name="description" placeholder="Description" className="p-2 border border-slate-300 rounded-lg text-sm md:col-span-1" required />
-                <button type="submit" className="bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center justify-center"><Plus className="w-4 h-4 mr-2" /> Record</button>
-              </form>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="p-6 border-b border-slate-200"><h3 className="text-lg font-semibold text-slate-900">Recent Expenses</h3></div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>{['Date', 'Category', 'Description', 'Amount'].map(h => <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {expenses.map(exp => (
-                      <tr key={exp.id} className="hover:bg-slate-50">
-                        <td className="px-6 py-4 text-sm text-slate-600">{exp.date}</td>
-                        <td className="px-6 py-4"><Badge>{exp.category}</Badge></td>
-                        <td className="px-6 py-4 text-sm text-slate-600">{exp.description}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-red-600">-{formatKES(exp.amount)}</td>
-                      </tr>
-                    ))}
-                    {expenses.length === 0 && <tr><td colSpan="4" className="px-6 py-8 text-center text-slate-500">No expenses recorded.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'accounts':
-        return (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-900">Chart of Accounts</h2>
-              <button className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center"><Plus className="w-4 h-4 mr-2" /> Add Account</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>{['Code', 'Account Name', 'Type', 'Balance (KES)'].map(h => <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {accounts.map(acc => (
-                    <tr key={acc.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 text-sm font-mono text-slate-600">{acc.code}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{acc.name}</td>
-                      <td className="px-6 py-4"><Badge color={acc.type === 'Asset' ? 'emerald' : acc.type === 'Liability' ? 'red' : 'blue'}>{acc.type}</Badge></td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{formatKES(acc.balance)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-
-      case 'mpesa':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Initiate STK Push</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Till Number</label><input type="text" defaultValue={settings.tillNumber} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50" readOnly /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label><input type="text" placeholder="0712345678" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" /></div>
-                <div><label className="block text-sm font-medium text-slate-700 mb-1">Amount (KES)</label><input type="number" placeholder="0.00" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" /></div>
-                <div className="flex items-end"><button className="w-full py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 flex items-center justify-center"><Smartphone className="w-4 h-4 mr-2" /> Send STK Push</button></div>
-              </div>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">M-Pesa Integration Status</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100"><p className="text-sm text-emerald-600 font-medium">Daraja API</p><p className="text-2xl font-bold text-emerald-900">Connected</p></div>
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-100"><p className="text-sm text-blue-600 font-medium">Till Number</p><p className="text-2xl font-bold text-blue-900">{settings.tillNumber}</p></div>
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-100"><p className="text-sm text-slate-600 font-medium">Today's Volume</p><p className="text-2xl font-bold text-slate-900">{formatKES(45600)}</p></div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'reports':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h3 className="text-lg font-semibold text-slate-900">Sales & Profit Report</h3>
-                <div className="flex gap-3">
-                  <div className="flex items-center border border-slate-300 rounded-lg px-3 py-2"><Calendar className="w-4 h-4 text-slate-400 mr-2" /><span className="text-sm text-slate-600">Jun 11 - Jun 17, 2026</span></div>
-                  <button className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 flex items-center"><Download className="w-4 h-4 mr-2" /> Export PDF</button>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={[{name:'Mon',sales:45000,expenses:12000},{name:'Tue',sales:52000,expenses:15000},{name:'Wed',sales:48000,expenses:11000},{name:'Thu',sales:61000,expenses:18000},{name:'Fri',sales:75000,expenses:22000},{name:'Sat',sales:89000,expenses:25000},{name:'Sun',sales:67000,expenses:19000}]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} />
-                  <Tooltip contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                  <Legend />
-                  <Bar dataKey="sales" fill="#10b981" radius={[4, 4, 0, 0]} name="Sales (KES)" />
-                  <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} name="Expenses (KES)" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        );
-
-      case 'employees':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Employee Attendance</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {employees.map(emp => (
-                  <div key={emp.id} className="border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center">
-                        <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mr-3"><span className="text-emerald-700 font-bold text-lg">{emp.name.charAt(0)}</span></div>
-                        <div><h4 className="font-semibold text-slate-900">{emp.name}</h4><p className="text-xs text-slate-500">{emp.role}</p></div>
-                      </div>
-                      <Badge color={emp.status === 'Clocked In' ? 'emerald' : emp.status === 'On Break' ? 'amber' : 'slate'}>{emp.status}</Badge>
-                    </div>
-                    <div className="text-sm text-slate-600 mb-4">
-                      <p>Last action: <span className="font-medium text-slate-900">{emp.lastAction}</span></p>
-                      <p>Hours today: <span className="font-medium text-slate-900">{emp.hoursToday}h</span></p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => setEmployees(prev => prev.map(e => e.id === emp.id ? {...e, status: 'Clocked In', lastAction: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} : e))} className="flex-1 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 flex items-center justify-center"><LogIn className="w-4 h-4 mr-1" /> In</button>
-                      <button onClick={() => setEmployees(prev => prev.map(e => e.id === emp.id ? {...e, status: 'On Break', lastAction: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} : e))} className="flex-1 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 flex items-center justify-center"><Clock className="w-4 h-4 mr-1" /> Break</button>
-                      <button onClick={() => setEmployees(prev => prev.map(e => e.id === emp.id ? {...e, status: 'Clocked Out', lastAction: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} : e))} className="flex-1 py-2 bg-slate-600 text-white text-sm font-medium rounded-lg hover:bg-slate-700 flex items-center justify-center"><LogOut className="w-4 h-4 mr-1" /> Out</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'users':
-        return (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-900">User Management</h2>
-              <button className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center"><Plus className="w-4 h-4 mr-2" /> Add User</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>{['User', 'Role', 'Username', 'Status'].map(h => <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">{h}</th>)}</tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {users.map(user => (
-                    <tr key={user.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4"><div className="flex items-center"><div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center mr-3"><span className="font-bold text-slate-600">{user.name.charAt(0)}</span></div><p className="font-medium text-slate-900">{user.name}</p></div></td>
-                      <td className="px-6 py-4"><Badge color={user.role === 'Admin' ? 'purple' : 'blue'}>{user.role}</Badge></td>
-                      <td className="px-6 py-4 text-sm text-slate-600">@{user.username}</td>
-                      <td className="px-6 py-4"><Badge color="emerald">{user.status}</Badge></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-
-      case 'settings':
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-6">Store Settings</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Store Name</label>
-                  <input type="text" value={settings.storeName} onChange={(e) => setSettings({...settings, storeName: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">KRA PIN</label>
-                  <input type="text" value={settings.kraPin} onChange={(e) => setSettings({...settings, kraPin: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">M-Pesa Till Number</label>
-                  <input type="text" value={settings.tillNumber} onChange={(e) => setSettings({...settings, tillNumber: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
-                  <input type="text" value={settings.address} onChange={(e) => setSettings({...settings, address: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-                </div>
-              </div>
-              <button onClick={() => alert('Settings saved successfully!')} className="mt-6 px-6 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center"><Save className="w-4 h-4 mr-2" /> Save Changes</button>
-            </div>
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Data Management</h3>
-              <div className="flex gap-4">
-                <button onClick={handleBackup} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center"><Download className="w-4 h-4 mr-2" /> Backup Data (JSON)</button>
-                <button className="px-4 py-2 bg-slate-600 text-white rounded-lg text-sm font-medium hover:bg-slate-700 flex items-center"><Upload className="w-4 h-4 mr-2" /> Restore Data</button>
-              </div>
-            </div>
-          </div>
-        );
-
-      default:
-        return (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4"><Settings className="w-8 h-8 text-slate-400" /></div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2 capitalize">{currentView.replace('-', ' ')} Module</h3>
-            <p className="text-slate-500 max-w-md mx-auto">This module is fully integrated. The interface follows the same design system as the Dashboard and Sales modules.</p>
-          </div>
-        );
-    }
-  };
-
-  return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900">
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          #receipt-print-area { display: block !important; position: absolute; top: 0; left: 0; width: 100%; background: white; z-index: 9999; }
-          body { background: white; }
+        const loginBtn = document.getElementById('loginBtn');
+        if (loginBtn) {
+            loginBtn.addEventListener('click', handleLogin);
         }
-        #receipt-print-area { display: none; }
-      `}</style>
+    }
 
-      {/* Printable Receipt */}
-      {receiptData && (
-        <div id="receipt-print-area" className="p-8 font-mono text-sm text-black max-w-sm mx-auto">
-          <div className="text-center mb-6">
-            <h2 className="text-xl font-bold uppercase">{settings.storeName}</h2>
-            <p>{settings.address}</p>
-            <p>KRA PIN: {settings.kraPin}</p>
-            <p className="mt-2">Till: {receiptData.till}</p>
-          </div>
-          <div className="border-b border-black pb-2 mb-2 flex justify-between">
-            <span>Date: {receiptData.date}</span>
-            <span>Receipt: {receiptData.id}</span>
-          </div>
-          <div className="mb-4">
-            <p>Customer: {receiptData.customer}</p>
-            <p>Cashier: Admin User</p>
-          </div>
-          <div className="border-b border-black pb-2 mb-2">
-            {receiptData.items.map((item, i) => (
-              <div key={i} className="flex justify-between mb-1">
-                <span>{item.name} x{item.qty}</span>
-                <span>{formatKES(item.price * item.qty)}</span>
-              </div>
-            ))}
-          </div>
-          <div className="space-y-1 mb-6">
-            <div className="flex justify-between"><span>Subtotal:</span><span>{formatKES(receiptData.subtotal)}</span></div>
-            <div className="flex justify-between"><span>VAT (16%):</span><span>{formatKES(receiptData.tax)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t border-black pt-2"><span>TOTAL:</span><span>{formatKES(receiptData.total)}</span></div>
-            <div className="flex justify-between mt-2"><span>Payment ({receiptData.paymentMethod}):</span><span>{formatKES(receiptData.total)}</span></div>
-          </div>
-          <div className="text-center text-xs mt-8">
-            <p>Thank you for shopping with us!</p>
-            <p>Goods once sold cannot be returned.</p>
-          </div>
-        </div>
-      )}
+    function handleLogin() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
 
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white border-r border-slate-200 flex flex-col transition-all duration-300 hidden lg:flex no-print`}>
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center"><ShoppingCart className="w-6 h-6 text-white" /></div>
-          {sidebarOpen && <span className="text-xl font-bold text-slate-900">SwiftTill</span>}
-        </div>
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          {menuItems.map(item => {
-            const Icon = item.icon;
-            const isActive = currentView === item.id;
-            return (
-              <button key={item.id} onClick={() => setCurrentView(item.id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-                <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
-                {sidebarOpen && <span>{item.label}</span>}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="p-3 border-t border-slate-200">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="w-full flex items-center justify-center p-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-600"><Menu className="w-5 h-5" /></button>
-        </div>
-      </aside>
+        if (!username || !password) {
+            showNotification('Please enter username and password', 'error');
+            return;
+        }
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between no-print">
-          <div className="flex items-center gap-4">
-            <button className="lg:hidden p-2 text-slate-400 hover:text-slate-600"><Menu className="w-6 h-6" /></button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 capitalize">{currentView.replace('-', ' ')}</h1>
-              <p className="text-sm text-slate-500">Wednesday, June 17, 2026</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input type="text" placeholder="Global search..." className="pl-9 pr-4 py-2 w-64 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
-            </div>
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-slate-900">Admin User</p>
-                <p className="text-xs text-slate-500">Administrator</p>
-              </div>
-              <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center"><span className="text-emerald-700 font-bold text-sm">A</span></div>
-            </div>
-          </div>
-        </header>
+        // Simulate login
+        const loginBtn = document.getElementById('loginBtn');
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+        loginBtn.disabled = true;
 
-        <main className="flex-1 overflow-y-auto p-6 no-print">
-          <AnimatePresence mode="wait">
-            <motion.div key={currentView} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-              {renderView()}
-            </motion.div>
-          </AnimatePresence>
-        </main>
-      </div>
-
-      {/* Checkout Modal */}
-      <AnimatePresence>
-        {showCheckout && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 no-print" onClick={() => !mpesaStatus.includes('waiting') && !mpesaStatus.includes('pushing') && setShowCheckout(false)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-              <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-900">Complete Payment</h3>
-                <button onClick={() => setShowCheckout(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="p-6">
-                <div className="bg-slate-50 rounded-xl p-4 mb-6 text-center">
-                  <p className="text-sm text-slate-500">Total Amount Due</p>
-                  <p className="text-3xl font-bold text-emerald-600 mt-1">{formatKES(cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.16)}</p>
-                  <p className="text-xs text-slate-400 mt-1">Including 16% VAT</p>
-                </div>
-                <div className="space-y-3 mb-6">
-                  <p className="text-sm font-medium text-slate-700">Payment Method</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[{ id: 'cash', label: 'Cash', icon: Banknote }, { id: 'mpesa', label: 'M-Pesa', icon: Smartphone }, { id: 'card', label: 'Card', icon: CreditCard }, { id: 'bank', label: 'Bank Transfer', icon: Building }].map(method => {
-                      const Icon = method.icon;
-                      return (
-                        <button key={method.id} onClick={() => setPaymentMethod(method.id)} className={`p-3 rounded-xl border-2 flex items-center justify-center gap-2 font-medium text-sm transition-all ${paymentMethod === method.id ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                          <Icon className="w-5 h-5" />{method.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                {paymentMethod === 'mpesa' && (
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">M-Pesa Phone Number</label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input type="tel" placeholder="0712 345 678" value={mpesaPhone} onChange={(e) => setMpesaPhone(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none" />
-                    </div>
-                  </div>
-                )}
-                {mpesaStatus === 'pushing' && <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3 mb-4"><Loader2 className="w-5 h-5 text-blue-600 animate-spin" /><div><p className="text-sm font-medium text-blue-900">Sending STK Push...</p><p className="text-xs text-blue-700">Please wait while we contact Safaricom</p></div></div>}
-                {mpesaStatus === 'waiting' && <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3 mb-4"><Smartphone className="w-5 h-5 text-amber-600" /><div><p className="text-sm font-medium text-amber-900">Check your phone</p><p className="text-xs text-amber-700">Enter your M-Pesa PIN to complete payment to Till {settings.tillNumber}</p></div></div>}
-                {mpesaStatus === 'success' && <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center gap-3 mb-4"><CheckCircle2 className="w-5 h-5 text-emerald-600" /><div><p className="text-sm font-medium text-emerald-900">Payment Confirmed!</p><p className="text-xs text-emerald-700">Transaction completed successfully</p></div></div>}
-                <button onClick={processPayment} disabled={mpesaStatus === 'pushing' || mpesaStatus === 'waiting' || mpesaStatus === 'success' || (paymentMethod === 'mpesa' && !mpesaPhone)} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors flex items-center justify-center">
-                  {mpesaStatus === 'success' ? <><Check className="w-5 h-5 mr-2" /> Complete & Print Receipt</> : paymentMethod === 'mpesa' ? <><Smartphone className="w-5 h-5 mr-2" /> {mpesaStatus === 'waiting' ? 'Waiting for PIN...' : 'Send STK Push'}</> : <><Check className="w-5 h-5 mr-2" /> Confirm Payment</>}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+        setTimeout(function () {
+            loginScreen.style.display = 'none';
+            appContainer.style.display = 'flex';
+            showNotification('Welcome back, ' + username + '!', 'success');
+        }, 800);
+    }
 }
+
+/* ============ SIDEBAR TOGGLE ============ */
+function initSidebar() {
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarClose = document.getElementById('sidebarClose');
+
+    // Create overlay
+    let overlay = document.querySelector('.sidebar-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        document.body.appendChild(overlay);
+    }
+
+    if (menuToggle) {
+        menuToggle.addEventListener('click', function () {
+            sidebar.classList.add('active');
+            overlay.classList.add('active');
+        });
+    }
+
+    if (sidebarClose) {
+        sidebarClose.addEventListener('click', closeSidebar);
+    }
+
+    overlay.addEventListener('click', closeSidebar);
+
+    function closeSidebar() {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+    }
+}
+
+/* ============ NAVIGATION ============ */
+function initNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+
+    navItems.forEach(function (item) {
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            // Remove active from all
+            navItems.forEach(function (i) {
+                i.classList.remove('active');
+            });
+
+            // Add active to clicked
+            this.classList.add('active');
+
+            const page = this.getAttribute('data-page');
+            const pageTitle = document.querySelector('.page-title');
+
+            if (pageTitle) {
+                const pageName = page.charAt(0).toUpperCase() + page.slice(1);
+                pageTitle.textContent = pageName;
+            }
+
+            // Close sidebar on mobile
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('active');
+                const overlay = document.querySelector('.sidebar-overlay');
+                if (overlay) overlay.classList.remove('active');
+            }
+
+            showNotification('Navigated to ' + page.charAt(0).toUpperCase() + page.slice(1), 'info');
+        });
+    });
+}
+
+/* ============ USER DROPDOWN ============ */
+function initUserDropdown() {
+    const userDropdown = document.querySelector('.user-dropdown');
+    if (!userDropdown) return;
+
+    const trigger = userDropdown.querySelector('.user-trigger');
+    trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        userDropdown.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!userDropdown.contains(e.target)) {
+            userDropdown.classList.remove('open');
+        }
+    });
+}
+
+/* ============ LOGOUT ============ */
+function initLogout() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (!logoutBtn) return;
+
+    logoutBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (confirm('Are you sure you want to logout?')) {
+            document.getElementById('appContainer').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('loginForm').reset();
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+            loginBtn.disabled = false;
+        }
+    });
+}
+
+/* ============ DATE DISPLAY ============ */
+function updateCurrentDate() {
+    const dateEl = document.getElementById('currentDate');
+    if (!dateEl) return;
+
+    const now = new Date();
+    const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+    dateEl.textContent = now.toLocaleDateString('en-US', options);
+}
+
+/* ============ NOTIFICATIONS ============ */
+function showNotification(message, type) {
+    // Remove existing notifications
+    const existing = document.querySelector('.notification');
+    if (existing) existing.remove();
+
+    const notification = document.createElement('div');
+    notification.className = 'notification notification-' + type;
+
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        info: 'fa-info-circle',
+        warning: 'fa-exclamation-triangle'
+    };
+
+    notification.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '"></i> ' + message;
+
+    // Styles
+    Object.assign(notification.style, {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        padding: '14px 20px',
+        borderRadius: '8px',
+        color: 'white',
+        fontSize: '14px',
+        fontWeight: '500',
+        zIndex: '9999',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        animation: 'slideIn 0.3s ease',
+        background: type === 'success' ? '#059669' :
+                    type === 'error' ? '#dc2626' :
+                    type === 'warning' ? '#f59e0b' : '#2563eb'
+    });
+
+    document.body.appendChild(notification);
+
+    setTimeout(function () {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        notification.style.transition = 'all 0.3s ease';
+        setTimeout(function () { notification.remove(); }, 300);
+    }, 3000);
+}
+
+// Add animation keyframes dynamically
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+`;
+document.head.appendChild(style);
